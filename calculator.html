@@ -102,16 +102,19 @@
             data.evaluated = false;
           }
           if (newChar === ".") {
-            // Prevent multiple decimal points
-            if (data.displayString.includes(".")) {
-              return; 
+            // spliting the current display string by operators to get the current number being entered
+            let elem = data.displayString.split(/[\+\-\*\/]/);
+            let currentNum = elem[elem.length - 1];
+            
+            // already includes a decimal return nothing
+            if (currentNum.includes(".")) {
+              return;
             }
-
-            // Add the decimal point if it's the first one
-            if (data.displayString === "") {
-              data.displayString = "0."; 
+      
+            if (currentNum === "") {
+              data.displayString += "0.";
             } else {
-              data.displayString += newChar; 
+              data.displayString += newChar;
             }
           } 
           else if (numberStrs.includes(newChar)) {
@@ -169,7 +172,7 @@
             let char = newChar[i];
         
             // Build multidigit numbers and include decimals
-            if (/\d/.test(char) || char === ".") {
+            if (/\d|\./.test(char)) {
               let number = "";
               while (i < newChar.length && (/\d/.test(newChar[i]) || newChar[i] === ".")) {
                 number += newChar[i];
@@ -217,13 +220,13 @@
             "/": (a, b) => a / b,
           };
           let stack = [];
-          for (let token of newChar) {
-            if (!isNaN(token)) {
-              stack.push(parseFloat(token));
+          for (let elem of newChar) {
+            if (!isNaN(elem)) {
+              stack.push(parseFloat(elem));
             } else {
               let b = stack.pop();
               let a = stack.pop();
-              stack.push(operations[token](a, b));
+              stack.push(operations[elem](a, b));
             }
           }
           return stack.pop();
@@ -232,6 +235,7 @@
         evaluateExpression: () => {
           let postfix = data.infixToPostfix(data.displayString);
           let result = data.evaluatePostfix(postfix);
+          result = Math.round(result * 100) / 100;
           data.displayString = result.toString();
           data.evaluated = true;
           data.updateDisplay();
