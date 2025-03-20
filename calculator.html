@@ -33,7 +33,17 @@
       .displayContainer {
         display: flex;
         justify-content: flex-end;
-        width: 390px;
+        width: 355px;
+        margin-bottom: 10px; 
+        margin-left: 9px;
+        box-shadow: 2px 2px 5px gray;
+        border-radius: 5px;
+        background-color: #d2e6f4;
+        font-size: 17px;
+        border: 3px solid rgb(4, 16, 56);
+        padding: 8px; 
+        height: 12px; 
+   
       }
 
       #display {
@@ -43,7 +53,7 @@
   </head>
 
   <body>
-    <h1>Calculator</h1>
+    <h1 style = color:#083d63 >Calculator</h1>
     <div class="displayContainer">
       <span id="display"></span>
     </div>
@@ -77,23 +87,44 @@
       const numbersArr = Array.from(document.getElementsByClassName("number"));
       const operatorsArr = Array.from(document.getElementsByClassName("operator"));
       const parenthesisArr = Array.from(document.getElementsByClassName("parenthesis"));
+      const decimalsArr = Array.from(document.getElementsByClassName("decimal"));
+      const equalsButton = document.querySelector(".equals");
       const numberStrs = "0123456789".split("");
 
       const data = {
         displayString: "0",
+        // flag to check if an expression has been evaluated, if true then resets display
+        evaluated: false,
         appendStringNum: (newChar) => {
+          // If an expression was just evaluated, reset the display
+          if (data.evaluated) {
+            data.displayString = "";
+            data.evaluated = false;
+          }
           if (newChar === ".") {
-            //decimal + 0?
+            // Prevent multiple decimal points
+            if (data.displayString.includes(".")) {
+              return; 
+            }
+
+            // Add the decimal point if it's the first one
+            if (data.displayString === "") {
+              data.displayString = "0."; 
+            } else {
+              data.displayString += newChar; 
+            }
+          } 
+          else if (numberStrs.includes(newChar)) {
+            if (data.displayString === "0") {
+                data.displayString = newChar;  
+            } else {
+              data.displayString += newChar;
+            }
           }
 
-          if (numberStrs.includes(newChar)) {
-            if (data.displayString === "0") {
-              data.displayString = "";
-            }
-            data.displayString += newChar;
-          }
           data.updateDisplay();
         },
+
 
         appendStringOperator: (newChar) => {
           if (numberStrs.includes(data.displayString.slice(-1)) || data.displayString.slice(-1) === ")") {
@@ -103,6 +134,11 @@
         },
 
         appendStringParenthesis: (newChar) => {
+          // If an expression was just evaluated, reset the display
+          if (data.evaluated) {
+            data.displayString = "";
+            data.evaluated = false;
+          }
           if (newChar === ")") {
             if (data.displayString.split("(").length <= data.displayString.split(")").length) {
               //if there are not enough open parenthesis to add a closing parenthesis terminate early
@@ -123,6 +159,84 @@
 
           data.updateDisplay();
         },
+
+        infixToPostfix(newChar) {
+          const priority = { "+": 1, "-": 1, "*": 2, "/": 2 };
+          let output = [];
+          let operators = [];
+          let i = 0;
+          while (i < newChar.length) {
+            let char = newChar[i];
+        
+            // Build multidigit numbers and include decimals
+            if (/\d/.test(char) || char === ".") {
+              let number = "";
+              while (i < newChar.length && (/\d/.test(newChar[i]) || newChar[i] === ".")) {
+                number += newChar[i];
+                i++;
+              }
+              output.push(number);
+              continue;
+            }
+            // Push opening parenthesis onto the stack
+            if (char === "(") {
+              operators.push(char);
+            }
+            // closing parenthesis, pop until an opening parenthesis is found
+            else if (char === ")") {
+              while (operators.length && operators[operators.length - 1] !== "(") {
+                output.push(operators.pop());
+              }
+              if (operators.length) operators.pop(); // Remove the "("
+            }
+            // Operators, pop operators with greater or equal priority
+            else if (char in priority) {
+              while (
+                operators.length &&
+                operators[operators.length - 1] !== "(" &&
+                priority[operators[operators.length - 1]] >= priority[char]
+              ) {
+                output.push(operators.pop());
+              }
+              operators.push(char);
+            }
+            i++;
+          }
+          // pop any remaining operators
+          while (operators.length) {
+            output.push(operators.pop());
+          }
+          return output;
+        },
+
+        evaluatePostfix(newChar) {
+          const operations = {
+            "+": (a, b) => a + b,
+            "-": (a, b) => a - b,
+            "*": (a, b) => a * b,
+            "/": (a, b) => a / b,
+          };
+          let stack = [];
+          for (let token of newChar) {
+            if (!isNaN(token)) {
+              stack.push(parseFloat(token));
+            } else {
+              let b = stack.pop();
+              let a = stack.pop();
+              stack.push(operations[token](a, b));
+            }
+          }
+          return stack.pop();
+        },
+
+        evaluateExpression: () => {
+          let postfix = data.infixToPostfix(data.displayString);
+          let result = data.evaluatePostfix(postfix);
+          data.displayString = result.toString();
+          data.evaluated = true;
+          data.updateDisplay();
+        },
+   
         updateDisplay: () => {
           const display = document.getElementById("display");
           display.innerText = data.displayString;
@@ -148,6 +262,16 @@
         elem.addEventListener("click", (evt) => {
           data.appendStringParenthesis(elem.innerText);
         });
+      });
+
+      decimalsArr.map((elem) => {
+        elem.addEventListener("click", () => {
+          data.appendStringNum(elem.innerText);
+        });
+      });
+
+      equalsButton.addEventListener("click", () => {
+        data.evaluateExpression();
       });
     </script>
   </body>
